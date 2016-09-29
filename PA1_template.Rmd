@@ -1,25 +1,97 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Coursera_Week2"
+author: "JS"
+date: "September 29, 2016"
+fig_caption: yes
 ---
 
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='figures/',warning=FALSE, message=FALSE)
+```
 
-## Loading and preprocessing the data
-
-
-
-## What is mean total number of steps taken per day?
-
+# Coursera Reproducible Research Week 2
 
 
-## What is the average daily activity pattern?
+## Loading the data
+```{r }
+table<-read.csv(file="activity.csv",header = TRUE,colClasses = c("numeric","Date","numeric"))
 
+library(ggplot2)
+library(dplyr)
 
+```
 
-## Imputing missing values
+## Q1: What is mean total number of steps taken per day? NA omited
 
+Make a histogram of the total number of steps taken each day
+ 
+```{r }
+    dailyData <- table %>% group_by(date) %>% summarise(Steps = sum(steps))
+    dailyHist <-ggplot(data=dailyData,aes(x=Steps))+geom_histogram()+ggtitle("Total Number of Steps Each Day")
+    dailyHist
+    
+    dailyMean <-mean(dailyData$Steps,na.rm = TRUE)
+    dailyMean
+    dailyMed <-median(dailyData$Steps,na.rm = TRUE)
+    dailyMed
+``` 
 
+## Q2: What is the average daily activity pattern?
+ 
+```{r }
+    dailyInterval <- table %>% group_by(interval) %>% summarise(avgSteps = mean(steps,na.rm=TRUE))
+    dailyLine <- ggplot(data=dailyInterval,aes(x=interval,y=avgSteps))+geom_line()+ggtitle("Average Number of Steps during a Day")
+    dailyLine
+    print(paste0("On average, the maximum number of steps is during the inverval: ",dailyInterval[dailyInterval$avgSteps==max(dailyInterval$avgSteps),1]))
+``` 
+  
+## Q3: Imputing missing values
+  Calculate Nb of NAs
+  
+```{r }
+    summary(table)
+    print(paste0("The sum of NA's in the dataset is ",sum(is.na(table))))
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+  Fill NA values by the Average of the interval
+```{r }
+    AggTable <- merge(table,dailyInterval,by=c("interval"))
+    AggTable$FixSteps <- ifelse(is.na(AggTable$steps),AggTable$avgSteps,AggTable$steps)
+```
+
+   Create a new dataset that is equal to the original dataset but with the missing data filled in
+```{r }
+    Table_exNA <- AggTable[,c("date","interval","FixSteps")]
+    colnames(Table_exNA)[3]<-"steps"
+```
+
+  Histogram of the total number of steps taken each day
+```{r }
+    dailyData_exNA <-  Table_exNA %>% group_by(date) %>% summarise(Steps = sum(steps))
+    dailyHist_exNA <-ggplot(data=dailyData_exNA,aes(x=Steps))+geom_histogram()+ggtitle("Total Number of Steps Each Day - ex NA")
+    dailyHist_exNA
+```
+
+  Calculate Mean and Median
+```{r }
+    dailyMean_exNA <-mean(dailyData_exNA$Steps)
+    dailyMean_exNA
+    dailyMed_exNA <- median(dailyData_exNA$Steps)
+    dailyMed_exNA
+```
+  Both mean and median are really close. this is logic as we replace NA values by the average
+  
+    
+## Q4: Are there differences in activity patterns between weekdays and weekends?
+    
+    Define Weekday factor
+```{r }
+  
+    Table_exNA$WeekdayType <- ifelse(weekdays(Table_exNA$date) %in% c("Saturday","Sunday"),"weekend","weekday")
+    
+    WeekDayInterval <- Table_exNA %>% group_by(interval,WeekdayType) %>% summarise(avgSteps = mean(steps,na.rm=TRUE))
+    WeekDayPlot <- ggplot(data=WeekDayInterval,aes(x=interval,y=avgSteps))+geom_line()+facet_grid(WeekdayType ~ .)
+    WeekDayPlot
+```
+    
+    
